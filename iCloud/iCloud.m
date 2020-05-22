@@ -210,6 +210,7 @@
     // Setup iCloud Metadata Query
 	[self.query setSearchScopes:@[NSMetadataQueryUbiquitousDocumentsScope]];
 	[self.query setPredicate:[NSPredicate predicateWithFormat:[NSString stringWithFormat:@"%%K.pathExtension LIKE '%@'", self.fileExtension], NSMetadataItemFSNameKey]];
+    self.query.operationQueue = [NSOperationQueue new];
     
     // Notify the responder that an update has begun
 	[self.notificationCenter addObserver:self selector:@selector(startUpdate:) name:NSMetadataQueryDidStartGatheringNotification object:self.query];
