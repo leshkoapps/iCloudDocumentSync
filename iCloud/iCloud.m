@@ -267,12 +267,6 @@
 }
 
 - (void)updateFiles {
-    @synchronized (self) {
-        [self updateFilesSync];
-    }
-}
-
-- (void)updateFilesSync {
     // Log file update
     if (self.verboseLogging == YES) NSLog(@"[iCloud] Beginning file update with NSMetadataQuery");
     
