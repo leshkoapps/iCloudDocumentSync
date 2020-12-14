@@ -210,7 +210,10 @@
     // Setup iCloud Metadata Query
 	[self.query setSearchScopes:@[NSMetadataQueryUbiquitousDocumentsScope]];
 	[self.query setPredicate:[NSPredicate predicateWithFormat:[NSString stringWithFormat:@"%%K.pathExtension LIKE '%@'", self.fileExtension], NSMetadataItemFSNameKey]];
-    self.query.operationQueue = [NSOperationQueue new];
+    
+    NSOperationQueue *queryOperationQueue = [NSOperationQueue new];
+    queryOperationQueue.name = @"iCloud.query.operationQueue";
+    self.query.operationQueue = queryOperationQueue;
     
     // Notify the responder that an update has begun
 	[self.notificationCenter addObserver:self selector:@selector(startUpdate:) name:NSMetadataQueryDidStartGatheringNotification object:self.query];
@@ -267,6 +270,8 @@
 }
 
 - (void)updateFiles {
+    
+    
     // Log file update
     if (self.verboseLogging == YES) NSLog(@"[iCloud] Beginning file update with NSMetadataQuery");
     
@@ -279,39 +284,42 @@
 
     if ([self.query respondsToSelector:@selector(enumerateResultsUsingBlock:)]) {
         // Code for iOS 7.0 and later
-        
-        // Enumerate through the results
-        [self.query enumerateResultsUsingBlock:^(id result, NSUInteger idx, BOOL *stop) {
-            // Grab the file URL
-            NSURL *fileURL = [result valueForAttribute:NSMetadataItemURLKey];
-            NSString *fileStatus;
-            [fileURL getResourceValue:&fileStatus forKey:NSURLUbiquitousItemDownloadingStatusKey error:nil];
-            
-            if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusDownloaded]) {
-                // File will be updated soon
-            }
-            
-            if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusCurrent]) {
-                // Add the file metadata and file names to arrays
-                [discoveredFiles addObject:result];
-                [names addObject:[result valueForAttribute:NSMetadataItemFSNameKey]];
+        @try{
+            // Enumerate through the results
+            [self.query enumerateResultsUsingBlock:^(id result, NSUInteger idx, BOOL *stop) {
+                // Grab the file URL
+                NSURL *fileURL = [result valueForAttribute:NSMetadataItemURLKey];
+                NSString *fileStatus;
+                [fileURL getResourceValue:&fileStatus forKey:NSURLUbiquitousItemDownloadingStatusKey error:nil];
                 
-                if (self.query.resultCount-1 >= idx) {
-                    // Notify the delegate of the results on the main thread
-                    dispatch_async(dispatch_get_main_queue(), ^{
-                        if ([self.delegate respondsToSelector:@selector(iCloudFilesDidChange:withNewFileNames:)])
-                            [self.delegate iCloudFilesDidChange:discoveredFiles withNewFileNames:names];
-                    });
+                if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusDownloaded]) {
+                    // File will be updated soon
                 }
-            } else if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusNotDownloaded]) {
-                NSError *error;
-                BOOL downloading = [[NSFileManager defaultManager] startDownloadingUbiquitousItemAtURL:fileURL error:&error];
-                if (self.verboseLogging == YES) NSLog(@"[iCloud] %@ started downloading locally, successful? %@", [fileURL lastPathComponent], downloading ? @"YES" : @"NO");
-                if (error) {
-                    if (self.verboseLogging == YES) NSLog(@"[iCloud] Ubiquitous item failed to start downloading with error: %@", error);
+                
+                if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusCurrent]) {
+                    // Add the file metadata and file names to arrays
+                    [discoveredFiles addObject:result];
+                    [names addObject:[result valueForAttribute:NSMetadataItemFSNameKey]];
+                    
+                    if (self.query.resultCount-1 >= idx) {
+                        // Notify the delegate of the results on the main thread
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            if ([self.delegate respondsToSelector:@selector(iCloudFilesDidChange:withNewFileNames:)])
+                                [self.delegate iCloudFilesDidChange:discoveredFiles withNewFileNames:names];
+                        });
+                    }
+                } else if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusNotDownloaded]) {
+                    NSError *error;
+                    BOOL downloading = [[NSFileManager defaultManager] startDownloadingUbiquitousItemAtURL:fileURL error:&error];
+                    if (self.verboseLogging == YES) NSLog(@"[iCloud] %@ started downloading locally, successful? %@", [fileURL lastPathComponent], downloading ? @"YES" : @"NO");
+                    if (error) {
+                        if (self.verboseLogging == YES) NSLog(@"[iCloud] Ubiquitous item failed to start downloading with error: %@", error);
+                    }
                 }
-            }
-        }];
+            }];
+        }@catch(NSException *exc){
+            if (self.verboseLogging == YES) NSLog(@"[iCloud] Ubiquitous item failed to start downloading with exception: %@", exc);
+        }
     } else {
         // Code for iOS 6.1 and earlier
         
@@ -348,6 +356,7 @@
         // Reenable Updates
         [self.query enableUpdates];
     }
+    
 }
 
 
