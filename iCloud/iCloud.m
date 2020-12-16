@@ -289,31 +289,34 @@
             [self.query enumerateResultsUsingBlock:^(id result, NSUInteger idx, BOOL *stop) {
                 // Grab the file URL
                 NSURL *fileURL = [result valueForAttribute:NSMetadataItemURLKey];
-                NSString *fileStatus;
-                [fileURL getResourceValue:&fileStatus forKey:NSURLUbiquitousItemDownloadingStatusKey error:nil];
-                
-                if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusDownloaded]) {
-                    // File will be updated soon
-                }
-                
-                if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusCurrent]) {
-                    // Add the file metadata and file names to arrays
-                    [discoveredFiles addObject:result];
-                    [names addObject:[result valueForAttribute:NSMetadataItemFSNameKey]];
+                if(fileURL && [fileURL isKindOfClass:[NSURL class]]){
                     
-                    if (self.query.resultCount-1 >= idx) {
-                        // Notify the delegate of the results on the main thread
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            if ([self.delegate respondsToSelector:@selector(iCloudFilesDidChange:withNewFileNames:)])
-                                [self.delegate iCloudFilesDidChange:discoveredFiles withNewFileNames:names];
-                        });
+                    NSString *fileStatus;
+                    [fileURL getResourceValue:&fileStatus forKey:NSURLUbiquitousItemDownloadingStatusKey error:nil];
+                    
+                    if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusDownloaded]) {
+                        // File will be updated soon
                     }
-                } else if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusNotDownloaded]) {
-                    NSError *error;
-                    BOOL downloading = [[NSFileManager defaultManager] startDownloadingUbiquitousItemAtURL:fileURL error:&error];
-                    if (self.verboseLogging == YES) NSLog(@"[iCloud] %@ started downloading locally, successful? %@", [fileURL lastPathComponent], downloading ? @"YES" : @"NO");
-                    if (error) {
-                        if (self.verboseLogging == YES) NSLog(@"[iCloud] Ubiquitous item failed to start downloading with error: %@", error);
+                    
+                    if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusCurrent]) {
+                        // Add the file metadata and file names to arrays
+                        [discoveredFiles addObject:result];
+                        [names addObject:[result valueForAttribute:NSMetadataItemFSNameKey]];
+                        
+                        if (self.query.resultCount-1 >= idx) {
+                            // Notify the delegate of the results on the main thread
+                            dispatch_async(dispatch_get_main_queue(), ^{
+                                if ([self.delegate respondsToSelector:@selector(iCloudFilesDidChange:withNewFileNames:)])
+                                    [self.delegate iCloudFilesDidChange:discoveredFiles withNewFileNames:names];
+                            });
+                        }
+                    } else if ([fileStatus isEqualToString:NSURLUbiquitousItemDownloadingStatusNotDownloaded]) {
+                        NSError *error;
+                        BOOL downloading = [[NSFileManager defaultManager] startDownloadingUbiquitousItemAtURL:fileURL error:&error];
+                        if (self.verboseLogging == YES) NSLog(@"[iCloud] %@ started downloading locally, successful? %@", [fileURL lastPathComponent], downloading ? @"YES" : @"NO");
+                        if (error) {
+                            if (self.verboseLogging == YES) NSLog(@"[iCloud] Ubiquitous item failed to start downloading with error: %@", error);
+                        }
                     }
                 }
             }];
