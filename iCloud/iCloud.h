@@ -47,9 +47,8 @@
  @warning Only available on iOS 6.0 and later on apps with valid code signing and entitlements. Requires Xcode 5.0.1 and later. Check the online documentation for more information on setting up iCloud in your app. */
 @class iCloud;
 @protocol iCloudDelegate;
+
 NS_CLASS_AVAILABLE_IOS(6_0) @interface iCloud : NSObject
-
-
 
 /** @name Singleton */
 
@@ -64,7 +63,7 @@ NS_CLASS_AVAILABLE_IOS(6_0) @interface iCloud : NSObject
  @param containerID The fully-qualified container identifier for an iCloud container directory. The string you specify must not contain wildcards and must be of the form <TEAMID>.<CONTAINER>, where <TEAMID> is your development team ID and <CONTAINER> is the bundle identifier of the container you want to access.
  The container identifiers for your app must be declared in the com.apple.developer.ubiquity-container-identifiers array of the .entitlements property list file in your Xcode project.
  If you specify nil for this parameter, this method uses the first container listed in the com.apple.developer.ubiquity-container-identifiers entitlement array. */
-- (void)setupiCloudDocumentSyncWithUbiquityContainer:(NSString *)containerID;
+- (void)setupiCloudDocumentSyncWithUbiquityContainer:(NSString *)containerID completion:(dispatch_block_t)completion;
 
 
 
@@ -132,7 +131,7 @@ NS_CLASS_AVAILABLE_IOS(6_0) @interface iCloud : NSObject
 /** @name Syncing with iCloud */
 
 /** Check for and update the list of files stored in your app's iCloud Documents Folder. This method is automatically called by iOS when there are changes to files in the iCloud Directory. The iCloudFilesDidChange:withNewFileNames: delegate method is triggered by this method. */
-- (void)updateFiles;
+- (void)updateFilesWithCompletion:(dispatch_block_t)completion;
 
 
 /** @name Uploading to iCloud */
@@ -195,7 +194,7 @@ NS_CLASS_AVAILABLE_IOS(6_0) @interface iCloud : NSObject
  @param handler Code block called when the document is successfully uploaded. The completion block passes NSURL, NSDate, and NSError objects. The NSURL object is the public URL where the file is available at, could be nil. The NSDate object is the date that the URL expires on, could be nil. The NSError object contains any error information if an error occurred, otherwise it will be nil.
  
  @return The public URL where the file is available */
-- (NSURL *)shareDocumentWithName:(NSString *)documentName completion:(void (^)(NSURL *sharedURL, NSDate *expirationDate, NSError *error))handler __attribute__((nonnull));
+- (void)shareDocumentWithName:(NSString *)documentName completion:(void (^)(NSURL *sharedURL, NSDate *expirationDate, NSError *error))handler __attribute__((nonnull));
 
 
 
@@ -243,7 +242,7 @@ NS_CLASS_AVAILABLE_IOS(6_0) @interface iCloud : NSObject
  @param documentName The name of the UIDocument stored in iCloud. This value must not be nil.
  @return An iCloudDocument (UIDocument subclass) object. May return nil if iCloud is unavailable or if an error occurred */
 - (iCloudDocument *)retrieveCloudDocumentObjectWithName:(NSString *)documentName __attribute__((nonnull));
-
+    
 /** Check if a file exists in iCloud
  
  @param documentName The name of the UIDocument in iCloud. This value must not be nil.
